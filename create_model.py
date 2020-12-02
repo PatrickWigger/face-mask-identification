@@ -1,6 +1,8 @@
 import os
 import cv2
 import numpy as np
+
+# Used to read image annotations
 import xml.etree.ElementTree as ET
 
 # Model Layers
@@ -11,9 +13,6 @@ from keras.layers import Flatten
 from keras.layers import Dense
 from keras.layers import Dropout
 
-
-from keras.preprocessing.image import img_to_array
-
 # Keras models
 from keras.applications.mobilenet_v2 import MobileNetV2
 from keras.applications.resnet50 import ResNet50
@@ -23,6 +22,8 @@ from keras.applications.vgg16 import VGG16
 from keras.applications.mobilenet_v2 import preprocess_input as mobilenet_preprocess_input
 from keras.applications.resnet50 import preprocess_input as resnet50_preprocess_input
 from keras.applications.vgg16 import preprocess_input as vgg16_preprocess_input
+from keras.preprocessing.image import img_to_array
+
 
 # Define the directory prefix of where data is residing
 data_directory_prefix = "data/"
@@ -210,10 +211,3 @@ def create_model(model_type):
 
     # Return the created network
     return cnn
-
-
-
-
-
-
-

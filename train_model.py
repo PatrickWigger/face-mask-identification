@@ -1,9 +1,9 @@
-from keras.preprocessing.image import ImageDataGenerator
-from keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 
-# Label encoding for building model
+# Data encoding for training model
 from sklearn.preprocessing import LabelEncoder
+from keras.utils import to_categorical
+from keras.preprocessing.image import ImageDataGenerator
 
 
 def train_model(model, data, labels, test_size, epochs):
@@ -34,4 +34,5 @@ def train_model(model, data, labels, test_size, epochs):
               validation_steps=len(X_test),
               epochs=epochs)
 
+    # Return the model
     return model

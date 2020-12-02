@@ -1,9 +1,9 @@
+from os import path
 from create_model import *
 from train_model import *
 from detect_face import *
-from os import path
-import cv2
 
+# Used for loading pretrained model from memory
 from keras.models import load_model
 
 # Specify the type of model to be used (VGG16, ResNet50, MobileNetV2)
