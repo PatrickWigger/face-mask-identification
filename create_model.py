@@ -24,42 +24,47 @@ from keras.applications.mobilenet_v2 import preprocess_input as mobilenet_prepro
 from keras.applications.resnet50 import preprocess_input as resnet50_preprocess_input
 from keras.applications.vgg16 import preprocess_input as vgg16_preprocess_input
 
+# Define the directory prefix of where data is residing
 data_directory_prefix = "data/"
+
+# Specify the size of images to be passed to the selected network
 IMG_SIZE = 224
 
 
 def find_faces(data, model, show_boxes=False):
-    # Hold images of all faces and their corresponding mask labels
+    # Arrays to hold all cropped face images and their corresponding labels
     faces = []
     labels = []
 
+    # Check that the model provided is one of the expected models
     assert model in ("MobileNetV2", "VGG16", "ResNet50")
 
-    # Iterate through all image information
+    # Iterate through each image in the provided data
     for image in data:
-        # Read the image
+        # Read the image using OpenCV
         bgr_image = cv2.imread(filename=data_directory_prefix + "images/" + image["name"])
 
-        # Locate each face using the bounding boxes
+        # For each face in the image (most images contain multiple faces) load the bounding box and label
         for bndbox, label in zip(image["bndboxes"], image["classes"]):
+            # Obtain bounding box values
             xmin = bndbox[0]
             ymin = bndbox[1]
             xmax = bndbox[2]
             ymax = bndbox[3]
 
-            # To reduce training time, only use faces larger than 40 by 40 pixels
+            # Many images have tiny labelled faces, exclude them here to reduce training time later
             limit = 40
             if (xmax - xmin) > limit and (ymax - ymin) > limit:
-
-                # Crop the face image
+                # Crop the selected face out of the original image
                 face_image = bgr_image[ymin:ymax, xmin:xmax]
 
-                # Resize the face image
+                # Resize the face image with OpenCV to the selected image size
                 face_image = cv2.resize(src=face_image, dsize=(IMG_SIZE, IMG_SIZE))
 
-                # Preprocess the input based on the model to be used
+                # Convert the cropped image to an array
                 face_image = img_to_array(img=face_image)
 
+                # Preprocess the image according to the selected model to be used
                 if model == "ResNet50":
                     face_image = resnet50_preprocess_input(face_image)
                 elif model == "VGG16":
@@ -67,9 +72,11 @@ def find_faces(data, model, show_boxes=False):
                 elif model == "MobileNetV2":
                     face_image = mobilenet_preprocess_input(face_image)
 
+                # Add the cropped face and its label to the corresponding arrays
                 faces.append(face_image)
                 labels.append(label)
 
+            # Optionally show the bounding boxes around the selected faces on the orignial image
             if show_boxes:
                 # Choose a color based on the class
                 if label == 0:
@@ -79,29 +86,31 @@ def find_faces(data, model, show_boxes=False):
                 else:
                     color = (0, 255, 255)
 
-                # Optionally draw a rectangle around the face
+                # Draw a rectangle around the face
                 bgr_image = cv2.rectangle(img=bgr_image,
                                           pt1=(xmin, ymin),
                                           pt2=(xmax, ymax),
                                           color=color,
                                           thickness=2)
-
+        # Display the image
         if show_boxes:
             cv2.imshow("image", bgr_image)
             cv2.waitKey(0)
 
+    # Convert the faces and labels arrays to np arrays
     faces = np.array(faces, dtype=np.float32)
     labels = np.array(labels)
 
+    # Return the new data arrays
     return faces, labels
 
 
 def read_images():
-    # Load the paths for annotations and images
+    # Load all paths for both the images as well as their annotations
     annotation_paths = list(sorted(os.listdir(data_directory_prefix + "annotations")))
     image_paths = list(sorted(os.listdir(data_directory_prefix + "images")))
 
-    # Will hold annotation information for all images
+    # Define array to hold all relevant annotation data for each image
     data = []
 
     # Grab each XML annotation file and corresponding image
@@ -116,38 +125,33 @@ def read_images():
         # Create output package for image
         image_data = {}
 
-        # Will hold bounding boxes and classes for each face in the image
+        # Will hold bounding boxes and classes for every face in the image
         all_bndboxes = []
         all_classes = []
 
         for category in xml_root:
-            # Check for object tag, representing an individual face
+            # Check for object tag, representing an individual face (object == face)
             if category.tag == "object":
                 # Initialize the output variables
                 bndbox = [0, 0, 0, 0]
-                classification = -1
 
-                # Determine the category for the image
+                # Determine the classification of the image
                 name = category[0].text
 
-                # Class 0: Mask On, Class 1: No Mask, Class 2: Incorrectly Worn Mask
+                # Assign integer values to classifications (0: Mask, 1: No Mask, 2: Incorrectly Worn)
                 if name == "with_mask":
                     classification = 0
                 elif name == "without_mask":
                     classification = 1
-                elif name == "mask_weared_incorrect":
-                    classification = 2
                 else:
-                    classification = 3
+                    classification = 2
 
-                # Check that the image is identified in one of the classes
-                assert(classification in range(0, 3))
-
-                # Obtain bounding box sizes
+                # Obtain bounding box for the face
                 for dim in category[5]:
                     # Double check that this is the bbox category
                     assert(category[5].tag == "bndbox")
 
+                    # Convert text to integers and add to bndbox
                     if dim.tag == "xmin":
                         bndbox[0] = int(dim.text)
                     elif dim.tag == "ymin":
@@ -157,7 +161,7 @@ def read_images():
                     elif dim.tag == "ymax":
                         bndbox[3] = int(dim.text)
 
-                # Add the found classification and bndbox to the total for the image
+                # Add the classification as well as the bounding box for this face to the totals for the image
                 all_classes.append(classification)
                 all_bndboxes.append(bndbox)
 
@@ -167,7 +171,7 @@ def read_images():
         image_data['classes'] = all_classes
         data.append(image_data)
 
-    # Return list of all image annotations
+    # Return list of dictionaries containing annotations for all images in the dataset
     return data
 
 
@@ -200,9 +204,11 @@ def create_model(model_type):
     # Construct a new network with these layers
     cnn = Model(inputs=model.inputs, outputs=layers)
 
+    # We only want to train our new layers on our data
     for l in model.layers:
         l.trainable = False
 
+    # Return the created network
     return cnn
 
 
