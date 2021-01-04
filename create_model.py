@@ -33,6 +33,7 @@ IMG_SIZE = 224
 
 
 def find_faces(data, model, show_boxes=False):
+    global num_faces
     # Arrays to hold all cropped face images and their corresponding labels
     faces = []
     labels = []
@@ -54,13 +55,17 @@ def find_faces(data, model, show_boxes=False):
             ymax = bndbox[3]
 
             # Many images have tiny labelled faces, exclude them here to reduce training time later
-            limit = 40
+            limit = 30
             if (xmax - xmin) > limit and (ymax - ymin) > limit:
                 # Crop the selected face out of the original image
                 face_image = bgr_image[ymin:ymax, xmin:xmax]
 
                 # Resize the face image with OpenCV to the selected image size
                 face_image = cv2.resize(src=face_image, dsize=(IMG_SIZE, IMG_SIZE))
+
+                if show_boxes:
+                    cv2.imshow("Cropped", face_image)
+                    cv2.waitKey(0)
 
                 # Convert the cropped image to an array
                 face_image = img_to_array(img=face_image)
@@ -102,6 +107,7 @@ def find_faces(data, model, show_boxes=False):
     faces = np.array(faces, dtype=np.float32)
     labels = np.array(labels)
 
+    print(num_faces)
     # Return the new data arrays
     return faces, labels
 

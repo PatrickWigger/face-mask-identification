@@ -16,7 +16,7 @@ model_directory_prefix = "models/"
 video_path = "demo2.mov"
 
 # Path to image, if there is one
-image_path = "data/images/maksssksksss13.png"
+image_path = "data/images/maksssksksss29.png"
 
 
 def main():
@@ -73,7 +73,8 @@ def main():
 
             # Initialize video writer to save output video
             fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
-            videoWriter = cv2.VideoWriter("detect.avi", fourcc=fourcc, fps=20.0, frameSize=(video_width, video_height))
+            videoWriter = cv2.VideoWriter("output.avi", fourcc=fourcc, fps=20.0, frameSize=(video_width, video_height))
+
 
             # Loop through all video frames
             while True:
@@ -88,6 +89,9 @@ def main():
                 # Determine the classification of the face
                 frame = classify_face(image=frame, bndbox=bbox_list, model=model)
 
+                cv2.imshow("Output Frame", frame)
+                cv2.waitKey(30)
+
                 # Write the given frame to the output video
                 output = frame.copy()
                 videoWriter.write(output)
@@ -101,6 +105,10 @@ def main():
 
             # Detect face in the image
             bbox_list = find_face(image=image, face_cascade=face_cascade)
+
+            if bbox_list == [0, 0, 0, 0]:
+                print("Could not detect face in image")
+                exit()
 
             # Determine the classification of the face
             image = classify_face(image=image, bndbox=bbox_list, model=model)
